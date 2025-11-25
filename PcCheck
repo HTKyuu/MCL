@@ -10,12 +10,13 @@ if (-not $IsAdmin) {
 
 $tempPath = [System.IO.Path]::GetTempPath()
 $rawOutputFile = Join-Path $tempPath "PcCheck.txt"
+$susOutputFile = Join-Path $tempPath "ScanResults.txt"
 $desktopPath = [Environment]::GetFolderPath("Desktop")
-$susOutputFolder = Join-Path $desktopPath "PcCheck"
-$susOutputFile = Join-Path $susOutputFolder "ScanResults.txt"
+$zipOutputFile = Join-Path $desktopPath "PcCheck.zip"
 
 if (Test-Path $rawOutputFile) { Remove-Item $rawOutputFile -Force }
-if (Test-Path $susOutputFolder) { Remove-Item $susOutputFolder -Recurse -Force }
+if (Test-Path $susOutputFile) { Remove-Item $susOutputFile -Force }
+if (Test-Path $zipOutputFile) { Remove-Item $zipOutputFile -Force }
 
 $excludedExtensions = ".svg", ".mp4", ".mp3", ".jpg", ".png", ".txt", ".gif", ".md", ".as", ".inf", ".xml", ".swf", ".html", ".json", ".h", "js", "oft", "node"
 
@@ -61,7 +62,6 @@ $suspiciousNames = @(
     "mingw.exe", "mingw", "WEF.PS1", "Lagswitch", "Lag_switch", "Lag Switch"
 )
 
-
 function Write-Log($header, $content) {
     Add-Content -Path $rawOutputFile -Value "=== $header ==="
     foreach ($line in $content) { Add-Content -Path $rawOutputFile -Value $line }
@@ -75,7 +75,6 @@ function Get-MatchedKeywords($line) {
     }
     return $foundKeywords
 }
-
 
 $scanSteps = @(
     @{ Name="AppData Files"; Path="$env:APPDATA"; Type="Files" },
@@ -106,7 +105,7 @@ foreach ($step in $scanSteps) {
         switch ($step.Type) {
             "Files" {
                 if (Test-Path $step.Path) {
-                    $items = Get-ChildItem -Path $step.Path -Recurse -ErrorAction SilentlyContinue | 
+                    $items = Get-ChildItem -Path $step.Path -Recurse -ErrorAction SilentlyContinue |
                              Where-Object { ($_.PSIsContainer -or $excludedExtensions -notcontains $_.Extension) }
                     Write-Log $step.Name ($items | ForEach-Object { $_.FullName })
                 }
@@ -135,6 +134,11 @@ foreach ($step in $scanSteps) {
                         $items = Get-ChildItem -Path $folder -File -ErrorAction SilentlyContinue
                         foreach ($item in $items) { $startupItems += "$($item.Name) => $($item.FullName)" }
                     }
+
+                                        # ----- CREDITS -----
+                                        # script by @cdnkyuu
+                                        # ----- ------- -----
+
                 }
                 Write-Log $step.Name $startupItems
             }
@@ -176,6 +180,7 @@ foreach ($step in $scanSteps) {
             }
             "Uninstall" {
                 $paths = @("HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall","HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall")
+                $uninstallEntries = @()
                 foreach ($p in $paths) {
                     if (Test-Path $p) {
                         $subKeys = Get-ChildItem $p -Recurse -ErrorAction SilentlyContinue
@@ -183,11 +188,14 @@ foreach ($step in $scanSteps) {
                             $props = Get-ItemProperty $key.PSPath -ErrorAction SilentlyContinue
                             foreach ($prop in $props.PSObject.Properties) {
                                 if ($prop.Value -is [string] -and $prop.Value.Length -gt 3) {
-                                    Write-Log "Uninstall Registry Info" $prop.Value
+                                    $uninstallEntries += $prop.Value
                                 }
                             }
                         }
                     }
+                }
+                if ($uninstallEntries.Count -gt 0) {
+                    Write-Log "Uninstall Registry Info" $uninstallEntries
                 }
             }
         }
@@ -208,17 +216,18 @@ foreach ($line in $rawContent) {
     }
 }
 
-New-Item -ItemType Directory -Path $susOutputFolder -Force | Out-Null
 if ($matchedLines.Count -gt 0) {
     $matchedLines | Out-File -FilePath $susOutputFile -Encoding UTF8
 } else {
     "No Match" | Out-File -FilePath $susOutputFile -Encoding UTF8
 }
+
+Compress-Archive -Path $rawOutputFile, $susOutputFile -DestinationPath $zipOutputFile -Force
+
 Clear-Host
-Write-Host "  Done.`r`n  Output File: $($susOutputFile)`r`n" -ForegroundColor Green
+Write-Host "  Done.`r`n  Output File: $($zipOutputFile)`r`n" -ForegroundColor Green
 Write-Host "  Script by @cdnkyuu`r`n" -ForegroundColor Blue
 
 # ----- CREDITS -----
 # script by @cdnkyuu
 # ----- ------- -----
-
