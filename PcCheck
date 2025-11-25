@@ -4,7 +4,8 @@
 
 $IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
 if (-not $IsAdmin) {
-    Write-Host "[PcCheck] Please run as Administrator!" -ForegroundColor Red
+    Write-Host "IMPORTANT! Run as Administrator!" -ForegroundColor Red
+    return
 }
 
 $tempPath = [System.IO.Path]::GetTempPath()
@@ -32,7 +33,7 @@ $suspiciousNames = @(
     "Howl", "Howl.exe", "Hydrogen", "Hydrogen.exe", "intellect", "intellect.exe",
     "isabelle", "isabelle.exe", "JJSploit", "JJSploit.exe", "AWP.exe", "juju.exe",
     "KRNL", "KRNL.exe", "Linora",
-    
+
                             # ----- CREDITS -----
                             # script by @cdnkyuu
                             # ----- ------- -----
