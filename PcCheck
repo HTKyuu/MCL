@@ -5,7 +5,6 @@
 $IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
 if (-not $IsAdmin) {
     Write-Host "[PcCheck] Please run as Administrator!" -ForegroundColor Red
-    exit
 }
 
 $tempPath = [System.IO.Path]::GetTempPath()
